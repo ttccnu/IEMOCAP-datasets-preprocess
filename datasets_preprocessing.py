@@ -5,6 +5,8 @@ import wave
 import numpy as np
 import re
 import jieba
+import tensorflow.contrib.keras as kr
+import pickle
 
 
 def read_file(filename):
@@ -13,9 +15,26 @@ def read_file(filename):
     nchannels, sampwidth, framerate, wav_length = params[:4]
     str_data = file.readframes(wav_length)
     wavedata = np.fromstring(str_data, dtype=np.short)
+    # wavedata = np.float(wavedata*1.0/max(abs(wavedata)))  # normalization)
     time = np.arange(0, wav_length) * (1.0 / framerate)
     file.close()
     return wavedata, time, framerate
+
+
+def generate_label(emotion):
+    if (emotion == 'ang'):
+        label = 0
+    elif (emotion == 'sad'):
+        label = 1
+    elif (emotion == 'hap'):
+        label = 2
+    elif (emotion == 'neu'):
+        label = 3
+    elif (emotion == 'fear'):
+        label = 4
+    else:
+        label = 5
+    return label
 
 
 def read_IEMOCAP():
@@ -90,7 +109,6 @@ def read_IEMOCAP():
                             train_filename_save.append(filename)
 
     # 提取出transcription
-    
     train_text = []
     i = 0
     for path in train_filename_save:
@@ -126,8 +144,17 @@ def read_IEMOCAP():
                 word.extend(jieba.lcut(blk))
         train_text.append(word)
 
-    return train_data, train_label, train_filename_save, train_text, train_emt
+    train_label_in_num = [generate_label(e) for e in train_label]
+    train_label_in_onehot = kr.utils.to_categorical(train_label_in_num, num_classes=4)
+
+    f = open('./IEMOCAP.pkl', 'wb')
+    pickle.dump((train_data, train_label, train_filename_save, train_text, train_label_in_num, train_label_in_onehot,
+                 train_emt), f)
+    f.close()
+    pass
+
+    #return train_data, train_label, train_filename_save, train_text, train_label_in_num, train_label_in_onehot, train_emt
 
 
-train_data, train_label, train_filename_save, train_text, train_emt = read_IEMOCAP()
-
+if __name__ == "__main__":
+    read_IEMOCAP()
